@@ -60,36 +60,57 @@ resource "aws_iam_role_policy" "lamda_role_policy" {
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "ModifyLightsailSnapshots",
+          "Sid": "LightsailFullAccess",
+          "Effect": "Allow",
+          "Action": [
+              "lightsail:*"
+          ],
+          "Resource": "*"
+        },
+        {
+            "Sid": "LogsFullAccess",
             "Effect": "Allow",
-            "Action": [
-                "lightsail:GetInstanceSnapshot",
-                "lightsail:DeleteInstanceSnapshot",
-                "lightsail:GetInstanceSnapshots",
-                "lightsail:CreateInstanceSnapshot"
-            ],
-            "Resource": [
-                "arn:aws:lightsail:*:*:Instance/*",
-                "arn:aws:lightsail:*:*:InstanceSnapshot/*"
-            ]
+            "Action": "logs:*",
+            "Resource": "*"
         }
     ]
 }
 EOF
 }
 
-data "archive_file" "lambda_zip" {
+data "archive_file" "create_snapshots_lambda_zip" {
   type        = "zip"
-  source_dir  = "lightsail-instance-snapshots"
-  output_path = "lightsail-instance-snapshots.zip"
+  source_dir  = "lightsail-create-instance-snapshots"
+  output_path = "lightsail-create-instance-snapshots.zip"
 }
 
-resource "aws_lambda_function" "instance_snapshot_lambda" {
-  filename         = "lightsail-instance-snapshots.zip"
-  function_name    = "modifyLightSailSnapshots"
+data "archive_file" "prune_snapshots_lambda_zip" {
+  type        = "zip"
+  source_dir  = "lightsail-prune-instance-snapshots"
+  output_path = "lightsail-prune-instance-snapshots.zip"
+}
+
+resource "aws_lambda_function" "create_instance_snapshot_lambda" {
+  filename         = "lightsail-create-instance-snapshots.zip"
+  function_name    = "createLightSailSnapshots"
   role             = "${aws_iam_role.lamda_role.arn}"
   handler          = "index.handler"
-  source_code_hash = "${data.archive_file.lambda_zip.output_base64sha256}"
+  source_code_hash = "${data.archive_file.create_snapshots_lambda_zip.output_base64sha256}"
+  runtime          = "nodejs6.10"
+
+  environment {
+    variables = {
+      INSTANCE_NAME = "${var.instance_name}"
+    }
+  }
+}
+
+resource "aws_lambda_function" "prune_instance_snapshot_lambda" {
+  filename         = "lightsail-prune-instance-snapshots.zip"
+  function_name    = "pruneLightSailSnapshots"
+  role             = "${aws_iam_role.lamda_role.arn}"
+  handler          = "index.handler"
+  source_code_hash = "${data.archive_file.prune_snapshots_lambda_zip.output_base64sha256}"
   runtime          = "nodejs6.10"
 
   environment {
@@ -102,13 +123,35 @@ resource "aws_lambda_function" "instance_snapshot_lambda" {
 
 resource "aws_cloudwatch_event_rule" "cloudwatch_scheduled_event" {
   name        = "LightsailSnapshotSchedule"
-  description = "Trigger the modifyLightSailSnapshots to modify snapshots."
+  description = "Trigger the createLightSailSnapshots and pruneLightSailSnapshots light to modify snapshots."
 
   schedule_expression = "rate(${var.snapshot_event_rate})"
 }
 
-resource "aws_cloudwatch_event_target" "cloudwatch_event_target" {
+resource "aws_lambda_permission" "create_snapshots_allow_cloudwatch" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.create_instance_snapshot_lambda.function_name}"
+  principal     = "events.amazonaws.com"
+  source_arn    = "${aws_cloudwatch_event_rule.cloudwatch_scheduled_event.arn}"
+}
+
+resource "aws_lambda_permission" "prune_snapshots_allow_cloudwatch" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.prune_instance_snapshot_lambda.function_name}"
+  principal     = "events.amazonaws.com"
+  source_arn    = "${aws_cloudwatch_event_rule.cloudwatch_scheduled_event.arn}"
+}
+
+resource "aws_cloudwatch_event_target" "create_lightsail_snapshots_cloudwatch_event_target" {
   rule      = "${aws_cloudwatch_event_rule.cloudwatch_scheduled_event.name}"
-  target_id = "TriggerModifyLightsailSnapshots"
-  arn       = "${aws_lambda_function.instance_snapshot_lambda.arn}"
+  target_id = "TriggerCreateLightsailSnapshots"
+  arn       = "${aws_lambda_function.create_instance_snapshot_lambda.arn}"
+}
+
+resource "aws_cloudwatch_event_target" "prune_lightsail_snapshots_cloudwatch_event_target" {
+  rule      = "${aws_cloudwatch_event_rule.cloudwatch_scheduled_event.name}"
+  target_id = "TriggerPruneLightsailSnapshots"
+  arn       = "${aws_lambda_function.prune_instance_snapshot_lambda.arn}"
 }
