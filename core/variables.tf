@@ -22,6 +22,10 @@ variable "snapshot_retention_days" {
   description = "The number of days to retain snapshots of the lightsail instance"
 }
 
-variable "snapshot_event_rate" {
-  description = "The number of days after which to trigger a snapshot creation. 1 day = create snapshot every day, 3 days = create snapshot every 3 days, 10 minutes = create snapshot every 10 minutes"
+variable "snapshot_event_rate_days" {
+  description = "The number of days after which to trigger a snapshot creation."
+}
+
+variable "notification_phone" {
+  description = "The phone number, in international format, to use for notification of errors in snapshot creation."
 }
