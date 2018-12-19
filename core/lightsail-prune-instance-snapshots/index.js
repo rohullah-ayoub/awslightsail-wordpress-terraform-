@@ -47,9 +47,6 @@ function pruneSnapshots(retentionPeriod, callback) {
         }).promise();
         promises.push(deleteInstanceSnapshot.then(function (res) {
           return snapshot.name;
-        }).catch(function (err) {
-          // TODO: This should be throwing an error. It is temporarily here until AWS responds to the error with deleting a certain snapshot
-          console.log(err)
         }))
 
       }
