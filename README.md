@@ -23,7 +23,7 @@ It is possible, for several reasons, that a Lambda function may fail. In our cas
 
 Make sure that you have Terraform version **v0.11.5** installed. This should work with older versions of Terraform but it may not.
 
-In addition, make sure you have your AWS credentials setup. Follow the instructions at the [AWS documentation](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html).
+In addition, make sure you have your AWS credentials setup. Follow the instructions at the [AWS documentation](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html). These credentials would have be setup in order for you to be able to run the terraform commands.
 
 ### Setting up state Backend resources
 
@@ -35,7 +35,7 @@ We will be using an S3 bucket to store our Terraform state and a DynamoDB table 
   - You will be asked to provide the values for "aws_region" and "project-prefix"
   - Make note of the "state_bucket_name" and "lock_table_name" since you will use them in the next step.
 
-### Setting up Backend for the core infrastructure
+### Backend for the core infrastructure
 
 Move into the **core** directory and run the following command:
 
@@ -43,7 +43,7 @@ terraform init -backend-config "bucket={state_bucket_name}" -backend-config "key
 
 You are all set to setup the infrastructure now.
 
-### Setting up the core infrastructure
+### The core infrastructure
 
 In the **core** directory and run the following commands:
 
