@@ -29,7 +29,7 @@ function createSnapshot(instanceName, callback) {
   const snapshotName = `${instanceName}-system-${Date.now() *
     1000}-${AUTO_SNAPSHOT_SUFFIX}`;
   const options = {
-    instanceName: "Wordpress",
+    instanceName: instanceName,
     instanceSnapshotName: snapshotName
   };
 

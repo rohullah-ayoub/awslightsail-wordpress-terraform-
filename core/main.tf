@@ -115,7 +115,6 @@ resource "aws_lambda_function" "prune_instance_snapshot_lambda" {
 
   environment {
     variables = {
-      INSTANCE_NAME    = "${var.instance_name}"
       RETENTION_PERIOD = "${var.snapshot_retention_days}"
     }
   }
@@ -125,7 +124,7 @@ resource "aws_cloudwatch_event_rule" "cloudwatch_scheduled_event" {
   name        = "LightsailSnapshotSchedule"
   description = "Trigger the createLightSailSnapshots and pruneLightSailSnapshots light to modify snapshots."
 
-  schedule_expression = "rate(${var.snapshot_event_rate})"
+  schedule_expression = "rate(${var.snapshot_event_rate_days} day)"
 }
 
 resource "aws_lambda_permission" "create_snapshots_allow_cloudwatch" {
@@ -154,4 +153,82 @@ resource "aws_cloudwatch_event_target" "prune_lightsail_snapshots_cloudwatch_eve
   rule      = "${aws_cloudwatch_event_rule.cloudwatch_scheduled_event.name}"
   target_id = "TriggerPruneLightsailSnapshots"
   arn       = "${aws_lambda_function.prune_instance_snapshot_lambda.arn}"
+}
+
+resource "aws_sns_topic" "lambda_lightsail_snapshots_sns_topic" {
+  name = "LambdaLightSailSnapshotsSnsTopic"
+}
+
+resource "aws_sns_topic_subscription" "lambda_lightsail_snapshots_sns_subscription" {
+  topic_arn = "${aws_sns_topic.lambda_lightsail_snapshots_sns_topic.arn}"
+  protocol  = "sms"
+  endpoint  = "${var.notification_phone}"
+}
+
+resource "aws_cloudwatch_metric_alarm" "create_lightsail_snapshots_cloudwatch_invocation_alarm" {
+  alarm_name          = "CreateLightSailSnapshotsCloudWatchInvocationAlarm"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "Invocations"
+  namespace           = "AWS/Lambda"
+  period              = "${var.snapshot_event_rate_days * 24 * 3600}"                               // Seconds
+  statistic           = "Sum"
+  threshold           = "1"
+  alarm_actions       = ["${aws_sns_topic.lambda_lightsail_snapshots_sns_topic.arn}"]
+  alarm_description   = "This metric triggers if the Lamdba function is not triggered as expected."
+
+  dimensions {
+    FunctionName = "createLightSailSnapshots"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "create_lightsail_snapshots_cloudwatch_error_alarm" {
+  alarm_name          = "CreateLightSailSnapshotsCloudWatchErrorAlarm"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = "${var.snapshot_event_rate_days * 24 * 3600}"
+  statistic           = "Sum"
+  threshold           = "0"
+  alarm_actions       = ["${aws_sns_topic.lambda_lightsail_snapshots_sns_topic.arn}"]
+  alarm_description   = "This metric triggers if there are any errors logged by Lamdba function"
+
+  dimensions {
+    FunctionName = "createLightSailSnapshots"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "prune_lightsail_snapshots_cloudwatch_invocation_alarm" {
+  alarm_name          = "PruneLightSailSnapshotsCloudWatchInvocationAlarm"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "Invocations"
+  namespace           = "AWS/Lambda"
+  period              = "${var.snapshot_event_rate_days * 24 * 3600}"                               // Seconds
+  statistic           = "Sum"
+  threshold           = "1"
+  alarm_actions       = ["${aws_sns_topic.lambda_lightsail_snapshots_sns_topic.arn}"]
+  alarm_description   = "This metric triggers if the Lamdba function is not triggered as expected."
+
+  dimensions {
+    FunctionName = "pruneLightSailSnapshots"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "prune_lightsail_snapshots_cloudwatch_error_alarm" {
+  alarm_name          = "PruneLightSailSnapshotsCloudWatchErrorAlarm"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = "${var.snapshot_event_rate_days * 24 * 3600}"
+  statistic           = "Sum"
+  threshold           = "0"
+  alarm_actions       = ["${aws_sns_topic.lambda_lightsail_snapshots_sns_topic.arn}"]
+  alarm_description   = "This metric triggers if there are any errors logged by Lamdba function"
+
+  dimensions {
+    FunctionName = "pruneLightSailSnapshots"
+  }
 }

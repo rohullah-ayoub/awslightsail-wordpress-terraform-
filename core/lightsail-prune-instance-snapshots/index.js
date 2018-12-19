@@ -4,6 +4,7 @@ console.log("Loading function");
 
 var AWS = require("aws-sdk");
 
+
 var lightsail = new AWS.Lightsail();
 const AUTO_SNAPSHOT_SUFFIX = "auto";
 
@@ -17,7 +18,7 @@ exports.handler = (event, context, callback) => {
     if (err) {
       context.fail(err);
     } else {
-      context.succeed('Snapshots pruned.')
+      context.succeed('Snapshots pruning completed')
     }
   });
 };
@@ -32,24 +33,34 @@ function pruneSnapshots(retentionPeriod, callback) {
       callback(err);
     }
 
+    let promises = [];
+
     data.instanceSnapshots.forEach(function (snapshot) {
-      const hasElapsedRetentionPeriod = (Date.now() - new Date(snapshot.createdAt).getTime()) > retentionPeriod.getTime();
+      const hasElapsedRetentionPeriod = new Date(snapshot.createdAt).getTime() < retentionPeriod.getTime();
 
       const istAutomatedSnapshot = snapshot.name.endsWith(AUTO_SNAPSHOT_SUFFIX);
 
+
       if (istAutomatedSnapshot && hasElapsedRetentionPeriod) {
-        lightsail.deleteInstanceSnapshot({
-            instanceSnapshotName: snapshot.name
-          },
-          function (err, res) {
-            if (err) {
-              callback(err);
-            }
-            console.log(`Deleted Snapshot with name: ${snapshot.name}`);
-          }
-        );
+        const deleteInstanceSnapshot = lightsail.deleteInstanceSnapshot({
+          instanceSnapshotName: snapshot.name
+        }).promise();
+        promises.push(deleteInstanceSnapshot.then(function (res) {
+          return snapshot.name;
+        }))
+
       }
 
     });
+
+    Promise.all(promises).then(function (values) {
+
+      console.log("Snapshots removed:");
+      values.forEach(function (value) {
+        console.log(value);
+      })
+
+      callback(null, values);
+    }).catch(callback);
   });
 }
