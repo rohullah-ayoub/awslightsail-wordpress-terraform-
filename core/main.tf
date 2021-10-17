@@ -177,7 +177,7 @@ resource "aws_cloudwatch_metric_alarm" "create_lightsail_snapshots_cloudwatch_in
   alarm_actions       = ["${aws_sns_topic.lambda_lightsail_snapshots_sns_topic.arn}"]
   alarm_description   = "This metric triggers if the Lamdba function is not triggered as expected."
 
-  dimensions {
+  dimensions = {
     FunctionName = "createLightSailSnapshots"
   }
 }
@@ -194,7 +194,7 @@ resource "aws_cloudwatch_metric_alarm" "create_lightsail_snapshots_cloudwatch_er
   alarm_actions       = ["${aws_sns_topic.lambda_lightsail_snapshots_sns_topic.arn}"]
   alarm_description   = "This metric triggers if there are any errors logged by Lamdba function"
 
-  dimensions {
+  dimensions = {
     FunctionName = "createLightSailSnapshots"
   }
 }
@@ -211,7 +211,7 @@ resource "aws_cloudwatch_metric_alarm" "prune_lightsail_snapshots_cloudwatch_inv
   alarm_actions       = ["${aws_sns_topic.lambda_lightsail_snapshots_sns_topic.arn}"]
   alarm_description   = "This metric triggers if the Lamdba function is not triggered as expected."
 
-  dimensions {
+  dimensions = {
     FunctionName = "pruneLightSailSnapshots"
   }
 }
@@ -228,7 +228,7 @@ resource "aws_cloudwatch_metric_alarm" "prune_lightsail_snapshots_cloudwatch_err
   alarm_actions       = ["${aws_sns_topic.lambda_lightsail_snapshots_sns_topic.arn}"]
   alarm_description   = "This metric triggers if there are any errors logged by Lamdba function"
 
-  dimensions {
+  dimensions = {
     FunctionName = "pruneLightSailSnapshots"
   }
 }
